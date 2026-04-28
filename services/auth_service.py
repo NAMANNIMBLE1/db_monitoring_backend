@@ -22,6 +22,10 @@ async def get_user_from_session(request: Request) -> Optional[int]:
     """Extract user_id from Laravel session cookie."""
     session_id = request.cookies.get("laravel_session")
     
+    # Debug: Log all available cookies
+    logger.debug(f"All cookies: {dict(request.cookies)}")
+    logger.debug(f"Looking for laravel_session cookie: {session_id}")
+    
     if not session_id:
         logger.warning("No laravel_session cookie found")
         return None
@@ -29,16 +33,23 @@ async def get_user_from_session(request: Request) -> Optional[int]:
     try:
         async for session in get_nms_db():
             # Query sessions table to get user_id
+            logger.debug(f"Querying session table for session_id: {session_id}")
             result = await session.execute(
                 text("SELECT user_id FROM sessions WHERE id = :session_id"),
                 {"session_id": session_id}
             )
             row = result.fetchone()
+            logger.debug(f"Session query result: {row}")
             
             if row and row[0]:
+                logger.info(f"Found user_id: {row[0]} for session: {session_id}")
                 return int(row[0])
             else:
                 logger.warning(f"No valid user found for session: {session_id}")
+                # Check if session table exists and has data
+                check_result = await session.execute(text("SELECT COUNT(*) FROM sessions"))
+                count = check_result.fetchone()[0]
+                logger.debug(f"Total sessions in database: {count}")
                 return None
                 
     except Exception as e:

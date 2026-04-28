@@ -25,7 +25,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable) -> Callable:
         # Skip authentication for public paths
-        if any(request.url.path.startswith(path) for path in self.PUBLIC_PATHS):
+        request_path = request.url.path
+        logger.debug(f"Request path: {request_path}")
+        
+        if request_path in self.PUBLIC_PATHS or any(request_path.startswith(path) for path in self.PUBLIC_PATHS if path.endswith('/')):
+            logger.debug(f"Skipping authentication for public path: {request_path}")
             return await call_next(request)
         
         # Skip authentication for OPTIONS requests (CORS preflight)
